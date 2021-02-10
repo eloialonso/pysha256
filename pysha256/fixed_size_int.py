@@ -1,5 +1,5 @@
 """
-Class to work in Z/nZ.
+Class to work in Z/nZ with n = 2 ** k.
 """
 
 
@@ -80,11 +80,11 @@ class FixedSizeInt:
         new_value = ~self.value
         return FixedSizeInt(value=new_value, n_bits=self.n_bits)
 
-    def right_rotation(self, d=1):
-        return (self >> d) | (self << (self.n_bits - d))
-
     def __radd__(self, other):
         return self + other
+
+    def right_rotation(self, d=1):
+        return (self >> d) | (self << (self.n_bits - d))
 
     def bin(self, n_bits=None):
         n_bits = n_bits if n_bits is not None else self.n_bits
