@@ -10,5 +10,5 @@ setup(name='pysha256',
       packages=['pysha256'],
       entry_points={
         'console_scripts': ['pysha256=pysha256.command_line:main'],
-      }
+      },
       )

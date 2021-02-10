@@ -20,13 +20,13 @@ def compute_n_first_primes(n):
                 return False
         return True
 
-    primes = []
     p = 2
-    while len(primes) < n:
+    n_primes = 0
+    while n_primes < n:
         if is_prime(p):
-            primes.append(p)
+            n_primes += 1
+            yield p
         p += 1
-    return primes
 
 
 def compute_sha256_constants():
