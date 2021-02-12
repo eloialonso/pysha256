@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from .hash import hash_byte_stream
+from .hash import hash_file, hash_string
 
 
 def parse_args():
@@ -21,20 +21,15 @@ def main():
     args = parse_args()
 
     if not args.file:  # process input directly as a string
-        encoding = "utf-8" if args.encoding is None else args.encoding
-        byte_stream = bytearray(args.input, encoding=encoding)
+        hash_value = hash_string(args.input, encoding=args.encoding)
 
     else:  # input is a file
         path = Path(args.input)
         if not path.is_file():
             raise FileNotFoundError(path)
         if args.encoding is not None:
-            print(f"WARNING: '--encoding {args.encoding}' won't be used since we directly hash a file ({path}). ")
-        with path.open("rb") as f:
-            byte_stream = f.read()
-
-    # Compute hash value
-    hash_value = hash_byte_stream(byte_stream)
+            print(f"WARNING: '--encoding {args.encoding}' won't be used since we directly hash a file ({path}).")
+        hash_value = hash_file(path)
 
     # Print output
     if args.output == "x":

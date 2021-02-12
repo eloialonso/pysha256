@@ -19,6 +19,23 @@ def build_message_blocks(byte_stream, block_size=512):
         yield formatted_message[i: i + block_size]
 
 
+def yield_message_blocks(byte_block_stream, block_size=512):
+    message_length = FixedSizeInt(0, n_bits=64)
+    # Yield "full" blocks
+    for byte_block in byte_block_stream:
+        block = "".join([FixedSizeInt(b, n_bits=8).bin() for b in byte_block])  # to bits
+        assert len(block) <= block_size
+        message_length += len(block)
+        if len(block) == block_size:
+            yield block
+    # Add message length to the end of the last block (and pad with zeros if necessary)
+    padding_length = -(len(block) + 1 + 64) % block_size  # there might need two blocks
+    last_blocks = block + "1" + "0" * padding_length + message_length.bin()
+    assert len(last_blocks) in (block_size, 2 * block_size)
+    for i in range(0, len(last_blocks), block_size):
+        yield last_blocks[i: i + block_size]
+
+
 def build_block_schedule(block):
     assert (len(block) == 512)
     schedule = []
@@ -56,15 +73,10 @@ def compress_block(block, initial_working_variables):
     return a, b, c, d, e, f, g, h
 
 
-def hash_byte_stream(byte_stream):
-    assert isinstance(byte_stream, bytearray) or isinstance(byte_stream, bytes)
-
-    # Split the byte_stream in blocks
-    blocks = build_message_blocks(byte_stream)
-
+def compress_blocks(blocks):
     # Compress blocks recursively
     working_variables = INITIAL_WORKING_VARIABLES
-    for block in blocks:
+    for i, block in enumerate(blocks):
         working_variables = compress_block(block, working_variables)
 
     # Concatenate the working variables to get the final hash
@@ -72,3 +84,32 @@ def hash_byte_stream(byte_stream):
     assert len(hash_value) == 256
     return FixedSizeInt(int(hash_value, base=2), 256)
 
+
+def hash_byte_block_stream(byte_block_stream, block_size=512):
+    blocks = yield_message_blocks(byte_block_stream, block_size=block_size)
+    hash_value = compress_blocks(blocks)
+    return hash_value
+
+
+def hash_string(input_str, encoding=None, block_size=512):
+    assert block_size % 8 == 0
+    input_bytes = bytearray(input_str, encoding="utf-8" if encoding is None else encoding)
+    byte_block_stream = (input_bytes[i: i + block_size // 8] for i in range(0, len(input_bytes), block_size // 8))
+    hash_value = hash_byte_block_stream(byte_block_stream)
+    return hash_value
+
+
+def read_file_by_chunks(path, chunk_size):
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
+
+def hash_file(path, block_size=512):
+    assert block_size % 8 == 0
+    byte_block_stream = read_file_by_chunks(path, chunk_size=block_size // 8)
+    hash_value = hash_byte_block_stream(byte_block_stream)
+    return hash_value
